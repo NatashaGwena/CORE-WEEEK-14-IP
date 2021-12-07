@@ -1,0 +1,142 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+plot(cars)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+
+# Association Rule
+
+
+```{r}
+# Loading the arules library
+#
+install.packages("arules")
+library(arules)
+```
+
+```{r}
+#Loading the data in form of a transactions dataset
+#items = read.csv("http://bit.ly/SupermarketDatasetII")
+items <- read.transactions("C:/Users/Natasha/Documents/MORINGA Data Science Course/R/WEEK14_IP/Supermarket_Sales_DatasetII.csv", sep = ",")
+
+
+```
+
+```{r}
+head(items)
+
+```
+
+```{r}
+#Checking class of our dataset
+class(items)
+
+```
+```{r}
+items.list<-as.data.frame(itemLabels(items))
+colnames(items.list) <- "Item"
+items.list
+
+```
+### There is a total of 119 items in the purchase list.
+
+```{r}
+# Previewing our first 6 transactions
+#
+inspect(items[1:6])
+
+```
+### From above we see that our first transaction is very lengthy as compared to the rest, and transaction 6 only contains a single item.
+
+```{r}
+# Checking which items were mostly purchased and distribution of item sets
+summary(items)
+```
+### Mineral water was the most purchased item, it was in 1708 transactions, followed by eggs then spaghetti. 1754 transactions consisted of only a sinle item in the basket which is the highest basket size, followed by 2 items all the way down to 1 transaction containing 18 and another 20 items.
+
+```{r}
+#Viewing the frequency of items purchased
+itemFrequency(items[, 1:10],type = "absolute")
+
+```
+
+```{r}
+#Getting the support of the top ten items
+round(itemFrequency(items[, 1:10],type = "relative")*100,2)
+```
+### From the list above, it evident that for the first 10 items in the stores list(arranged alphabetically), a good number of purchases contained an avocado and almonds in the basket. Hence the high support percentage for both items.
+
+```{r}
+# Displaying top 10 most frequent items
+# and the items whose relative importance is at least 10%
+#
+par(mfrow = c(1, 2))
+# plot the frequency of top N items
+itemFrequencyPlot(items, topN = 10,col="darkgreen")
+# Setting the minsup for getting the frequent itemset
+itemFrequencyPlot(items, support = 0.15,col="darkred")
+```
+
+```{r}
+# Building a model based on association rules
+# using the apriori function
+# ---
+# We use Min Support as 0.001 and confidence as 0.8
+# ---
+#
+rules <- apriori (items, parameter = list(supp = 0.001, conf = 0.85))
+
+```
+
+```{r}
+rules
+```
+### Increasing support to 0.002 decreases the set of rules to only 2 which is outrageous, so we eave it at 0.001 since it gives us 74rules when combined by a confidence of 0.8. But since we have 119 items, it also doesn’t make much sense to have 74rules, so we increase the confidence to 0.85 which gives us 29rules.
+
+```{r}
+#Summary of our model
+summary(rules)
+```
+### Our model shows that a basket size of 4 has the highest length at 19, a basket size of 3 with 5 transctions
+
+```{r}
+#Previewing the basket combinations of our model
+inspect(rules)
+```
+### Our model shows that a basket size of 4 has the highest length at 19, a basket size of 3 with 5 transctions
+```{r}
+inspect(rules)
+
+```
+###If a person buys mushroom cream sauce and pasta, their is a 95% chance that they will buy escalope
+###If a person purchases french fries,mushroom cream sauce and pasta then there is a 100% chance that they will buy escalope. 
+###There is also a 100% chance that if a person buys cake, meatballs and mineral water they will also buy milk and so on.
+
+```{r}
+rules<-sort(rules, by="lift", decreasing=TRUE)
+inspect(rules[1:5])
+```
+### Conclusion The lift for the above items are very high hence a great correlation between the itemsets and the combination commodity.
+### Hence Carrefour marketing team can make marketing plans using this. For example they can arrange iteems in an order that prioritizes this purchases. E.g they can have mushroom cream sauce, pasta and escalope on the same lane. ### They can have mineral water at the very front where it is easily accessible and so on.
+```{r}
+
+```
+
+```{r}
+
+```
+

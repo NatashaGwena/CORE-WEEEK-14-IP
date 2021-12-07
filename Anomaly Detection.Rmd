@@ -1,0 +1,86 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+plot(cars)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+# ANOMALY DETECTION
+## Reading data and loading libraries
+
+```{r}
+#Loading dataset
+data = read.csv("http://bit.ly/CarreFourSalesDataset")
+
+#Previewing head
+head(data)
+
+```
+
+```{r}
+#Installing packages
+
+library(tidyverse)
+
+```
+
+```{r}
+install.packages("anomalize")
+library(anomalize)
+
+```
+## Tidying dataset
+
+```{r}
+#Checking for missing values
+colSums(is.na(data))
+```
+```{r}
+#Changing table to tibble
+data$Date <- as.Date(data$Date, format = "%m/%d/%Y")
+df <- as.tibble(data)
+```
+```{r}
+is_tibble(df)
+```
+
+```{r}
+#aggregating sales values to get daily records
+df.anomaly <- aggregate(df["Sales"], by=df["Date"],sum)
+head(df.anomaly)
+
+```
+
+```{r}
+df.anomaly <- as.tibble(df.anomaly)
+is_tibble(df.anomaly)
+
+```
+
+## Anomaly detection
+
+```{r}
+anomaly.detect <- df.anomaly %>%
+time_decompose(Sales, method = "stl", frequency = "auto", trend = "auto") %>%
+anomalize(remainder, method = "gesd", alpha = 0.05, max_anoms = 0.2) %>%
+plot_anomaly_decomposition()
+
+```
+```{r}
+anomaly.detect
+```
+## Conclusions
+
+### The sales data seems to contain some anomalies as shown by the red points on the graph above It would be important for the marketing team to check them out to ascertain they are not fraud.

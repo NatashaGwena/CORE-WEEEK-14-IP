@@ -1,0 +1,252 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r}
+#install.packages("tidyverse")
+library(tidyverse)
+#install.packages("ggplot2")
+library(ggplot2)
+#install.packages("caret")
+library(caret)
+#install.packages("caretEnsemble")
+library(caretEnsemble)
+#install.packages("factoextra")
+library(factoextra)
+#install.packages("class")
+library(class)
+```
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+plot(cars)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+```{r}
+#Loading dataset
+sales = read.csv("http://bit.ly/CarreFourDataset")
+carr2 = read.csv("http://bit.ly/SupermarketDatasetII")
+carr3 = read.csv("http://bit.ly/CarreFourSalesDataset")
+```
+
+```{r}
+#Checking for size of dataset
+dim(sales)
+```
+
+```{r}
+#Checking for descriptive statistics and Null variables
+#And datatypes
+summary(sales)
+```
+
+
+From the summary, we can deduce the following from the data: 1. We have 1000 records and 16 attributes 2. Out of the 16 attributes, 8 are
+of data type character 3. We don’t have any null values 4. Looking at the ranges around the summary statistics of our numeric variables, we
+see that they are measured in different units hence we will need to scale later
+```{r}
+head(sales)
+```
+
+## Tidying the data
+```{r}
+#Checking to see how many unique values are in each variable
+rapply(sales,function(x)length(unique(x)))
+```
+#From output, a few columns don't seem to make sense so we go forward and check them out
+
+
+```{r}
+#Checking list of unique values for every column
+ulst <- lapply(sales, unique)
+ulst
+
+```
+## We don’t have any abnormal entries. So we go ahead to drop the column for InvoiceID since it is only a unique ID for every transaction and
+## will not be necessary for this analysis and the gross margin percentage since it is constant at 4.76 for all transactions.
+
+```{r}
+#Dropping columns
+sales <- subset(sales, select = -c(Invoice.ID,gross.margin.percentage))
+
+```
+```{r}
+head(sales)
+```
+
+## EDA
+```{r}
+nums <- subset(sales, select = -c(Branch, Customer.type,Gender,Product.line,Date, Time, Payment))
+head(nums)
+```
+
+```{r}
+library(tidyr)
+library(magrittr)
+library(dplyr)
+install.packages("psych")
+library(psych)
+```
+```{r}
+#Central tendecy values for numerical variables
+describe(nums)
+
+```
+
+```{r}
+#Distributions of different variables
+par( mfrow= c ( 2 , 4 ))
+for(i in 1 : length(nums)) {
+hist(nums[,i], main= names(nums[i]), xlab = names(nums[i]))
+}
+
+```
+follow a normal distribution. * Amount purchased per unit price seems to vary at all prices though a unit price of 90 to 100 has the highest
+number of customer entries * Amount purchased seems to decrease with increase in Total and gross income, tax and cogs, with highest
+frequency levels being where variable values are least.
+
+
+## Checking how different factors affect our target variable “Total”
+
+```{r}
+#Distribution of income per Gender
+ggplot(sales,
+aes(x = Total,
+fill = Gender)) +
+geom_density(alpha = 0.4) +
+labs(title = "Distribution of total income per Gender")
+```
+### For Totals between 0 and 280 there seem to be more male than female though the frequency of females for totals exceeding 280 seems to surpass male
+
+```{r}
+#Distribution of Total income per Branch
+ggplot(sales,
+aes(x = Total,
+fill = Branch)) +
+geom_density(alpha = 0.4) +
+labs(title = "Distribution of Total income per Branch")
+```
+### Branch A contributes more to Total and Branch C contributes the least
+
+```{r}
+#Distribution of Total per Payment method
+ggplot(sales,
+aes(x = Total,
+fill = Payment)) +
+geom_density(alpha = 0.4) +
+labs(title = "Distribution of Total income per Payment method")
+
+```
+
+```{r}
+#Salary distribution by rank
+ggplot(sales,
+aes(x = Total,
+fill = Customer.type)) +
+geom_density(alpha = 0.4) +
+labs(title = "Salary distribution by rank")
+```
+### Normal customers seem to have a greater influence on total than members
+```{r}
+#What quantity was mostly purchased in the store
+ggplot(sales, aes(x = Quantity)) +
+geom_bar()
+```
+### * Most people purchased 10items, followed by those who purchased 1 item
+
+```{r}
+library(corrplot)
+
+```
+```{r}
+#Get the correlation matrix
+res = cor(nums)
+#Plotting a correlation plot
+corrplot(res, method="color",addCoef.col = "black",
+tl.col="black", tl.srt=45)
+```
+### There is perfect correlation between Tax, Cogs and gross income. There is also high correlation between Unit Price and Tax,cogs and gross.income and Total.
+
+# Dimensionality Reduction
+
+## PCA- Feature Engineering
+```{r}
+#First we will make a copy of our sales dataset for future use
+data <- sales
+#Dropping columns for date and time
+data <- subset(data, select = -c(Date, Time))
+head(data)
+```
+
+```{r}
+#Converting factor columns to numeric
+data$Branch <- as.numeric(data$Branch)
+data$Customer.type <- as.numeric(data$Customer.type)
+data$Gender <- as.numeric(data$Gender)
+data$Product.line <- as.numeric(data$Product.line)
+data$Payment <- as.numeric(data$Payment)
+data$Quantity <- as.numeric(data$Quantity)
+head(data)
+
+```
+```{r}
+data<-na.omit(data)
+```
+
+```{r}
+library(factoextra)
+
+```
+
+```{r}
+#Performing pca
+data.pca <- prcomp(data[,c(1:11)], center = TRUE, scale. = TRUE)
+summary(data.pca)
+```
+
+```{r}
+
+```
+
+# Feature Selection
+### Using Filter Method Using the filter method, we will check for correlation between variables. We will then remove variables that are highly correlated as that is a sign of redundancy.
+
+```{r}
+library(caret)
+
+```
+
+```{r}
+#Separating target variable with independent variables
+df <- data[-12]
+# Calculating the correlation matrix
+correlationMatrix <- cor(df)
+# Find attributes that are highly correlated
+highlyCorrelated <- findCorrelation(correlationMatrix, cutoff= 0.75)
+# Highly correlated attributes
+highlyCorrelated
+
+```
+
+```{r}
+names(df[,highlyCorrelated])
+
+```
+```{r}
+# Removing the highly correlated features
+df.feat<-df[-highlyCorrelated]
+# Performing a graphical comparison
+par(mfrow = c(1, 2))
+corrplot(correlationMatrix, order = "hclust")
+corrplot(cor(df.feat), order = "hclust")
+```
+
